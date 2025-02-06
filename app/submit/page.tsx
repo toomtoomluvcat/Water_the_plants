@@ -8,10 +8,7 @@ import { parse } from "exifr";
 import { DateTime } from "luxon";
 import { v4 as uuid } from "uuid";
 
-interface FilePreview {
-  file: File;
-  preview: string;
-}
+interface FilePreview {}
 
 interface ExifData {
   DateTimeOriginal?: string;
@@ -27,10 +24,20 @@ interface ExifOptions {
 
 const ImageUploadPage = () => {
   const [showstatement, setShowstatement] = useState<boolean>(true);
-  const [filePreview, setFilePreview] = useState<FilePreview | null>(null);
+
+  const [showimg, setShowimg] = useState(true);
+  const [showimgAfter, setShowimgAfter] = useState(true);
+  const [filePreview, setFilePreview] = useState<{
+    file1: File | null;
+    preview1: string;
+    file2: File | null;
+    preview2: string;
+  } | null>(null);
   const [exifDateTime, setExifDateTime] = useState<{
-    date: string;
-    time: string;
+    date1: string;
+    time1: string;
+    date2: string;
+    time2: string;
   } | null>(null);
 
   const [error, setError] = useState<string>("");
@@ -40,11 +47,12 @@ const ImageUploadPage = () => {
     name: string;
     fileName: string | undefined;
     id: string;
-    datePhoto: string | undefined;
-    timePhoto: string | undefined;
+    datePhotoBefore: string | undefined;
+    timePhotoBefore: string | undefined;
+    datePhotoAfter: string | undefined;
+    timePhotoAfter: string | undefined;
     dateSubmit: string;
     timeSubmit: String;
-    distance: number | undefined;
   }>();
 
   function toRadians(degrees: number) {
@@ -98,30 +106,29 @@ const ImageUploadPage = () => {
     );
   };
 
-  useEffect(() => {
-    requestLocation();
-  }, []);
+  // useEffect(() => {
+  //   requestLocation();
+  // }, []);
 
-  useEffect(() => {
-    if (location) {
-      calculateDistance(
-        location?.latitude,
-        location?.longitude,
-        16.476280555555554,
-        102.82562222222222
-      );
-    }
-  }, [location]);
-
+  // useEffect(() => {
+  //   if (location) {
+  //     calculateDistance(
+  //       location?.latitude,
+  //       location?.longitude,
+  //       16.476280555555554,
+  //       102.82562222222222
+  //     );
+  //   }
+  // }, [location]);
   const handleSubmit = async (
     e: React.FormEvent<HTMLButtonElement>
   ): Promise<void> => {
     e.preventDefault();
-    if (!filePreview) {
+    if (!filePreview?.file1 && !filePreview?.file2) {
       setError("Please provide information");
       return;
     }
-    if (!exifDateTime) {
+    if (!exifDateTime?.date1 && exifDateTime?.date2) {
       setError("อุปกรณ์และแหล่งที่มารูปภาพไม่ตรงกัน");
       return;
     }
@@ -130,73 +137,133 @@ const ImageUploadPage = () => {
     const datesubmit = now.toFormat("HH:mm:ss");
     const buddhistEraDate = now.plus({ years: 543 }).toFormat("dd/MM/yyyy");
     const id = uuid();
+
+    console.log("โหล" + exifDateTime?.date1);
     const data = {
       name: "สมชาย มั่นหมาย",
-      fileName: filePreview?.file.name,
+      fileName: filePreview?.file1?.name,
       id: id,
-      datePhoto: exifDateTime?.date,
-      timePhoto: exifDateTime?.time,
+      datePhotoAfter: exifDateTime?.date1,
+      timePhotoAfter: exifDateTime?.time1,
+      datePhotoBefore: exifDateTime?.date2,
+      timePhotoBefore: exifDateTime?.time2,
       dateSubmit: buddhistEraDate,
       timeSubmit: timeSubmit,
-      distance: distanceFromGoal,
     };
     setUser(data);
     console.log(data);
     setShowstatement(false);
   };
 
-  const handleDrop = async (acceptedFiles: File[]) => {
+  const handleDrop = async (acceptedFiles: File[], position: number) => {
     try {
-      const file = acceptedFiles[0];
-      if (!file) {
-        console.log("not recipe file ");
-        return;
-      }
+      acceptedFiles.forEach(async (file) => {
+        const previewUrl = URL.createObjectURL(file);
 
-      const previewUrl = URL.createObjectURL(file);
+        const options = {
+          pick: ["DateTimeOriginal"],
+        };
 
-      const options = {
-        pick: ["DateTimeOriginal"],
-      };
+        const exifData = await parse(file, options);
 
-      const exifData = await parse(file, options);
+        setFilePreview((prev) => ({
+          ...prev,
+          file1: position === 1 ? file : prev?.file1 || null,
+          preview1: position === 1 ? previewUrl : prev?.preview1 || "",
+          file2: position === 2 ? file : prev?.file2 || null,
+          preview2: position === 2 ? previewUrl : prev?.preview2 || "",
+        }));
 
-      setFilePreview({ file, preview: previewUrl });
-      if (exifData && exifData.DateTimeOriginal) {
-        const dateTimeOriginal = new Date(exifData.DateTimeOriginal);
-        const date = dateTimeOriginal.toLocaleDateString("th-TH", {
-          timeZone: "Asia/Bangkok",
-        });
-        const time = dateTimeOriginal.toLocaleTimeString("th-TH", {
-          timeZone: "Asia/Bangkok",
-        });
-
-        setExifDateTime({ date: date, time: time });
-        setError("");
-      }
+        if (exifData && exifData.DateTimeOriginal) {
+          const dateTimeOriginal = new Date(exifData.DateTimeOriginal);
+          const date = dateTimeOriginal.toLocaleDateString("th-TH", {
+            timeZone: "Asia/Bangkok",
+          });
+          const time = dateTimeOriginal.toLocaleTimeString("th-TH", {
+            timeZone: "Asia/Bangkok",
+          });
+          console.log(date);
+          console.log(position);
+          setExifDateTime((prev) => ({
+            ...prev,
+            date1: position === 1 ? date : prev?.date1 || "",
+            time1: position === 1 ? time : prev?.time1 || "",
+            date2: position === 2 ? date : prev?.date2 || "",
+            time2: position === 2 ? time : prev?.time2 || "",
+          }));
+          setError("");
+        }
+      });
     } catch (err) {
       console.error("Error:", err);
     }
   };
 
-  const handleDelete = (): void => {
-    if (filePreview?.preview) {
-      URL.revokeObjectURL(filePreview.preview);
+  const handleDelete = (position: number): void => {
+    if (position === 1) {
+      setFilePreview((prev) =>
+        prev
+          ? {
+              file1: null,
+              preview1: "",
+              file2: prev?.file2,
+              preview2: prev?.preview2,
+            }
+          : null
+      );
+      setExifDateTime((prev) =>
+        prev
+          ? {
+              date1: "",
+              date2: prev?.date2 ?? "",
+              time1: "",
+              time2: prev?.time2 ?? "",
+            }
+          : null
+      );
+    } else {
+      setExifDateTime((prev) =>
+        prev
+          ? {
+              date2: "",
+              date1: prev?.date1 ?? "",
+              time2: "",
+              time1: prev?.time1 ?? "",
+            }
+          : null
+      );
+      setFilePreview((prev) =>
+        prev
+          ? {
+              file2: null,
+              preview2: "",
+              file1: prev?.file1,
+              preview1: prev?.preview1,
+            }
+          : null
+      );
     }
-    setFilePreview(null);
-    setExifDateTime(null);
+
     setError("");
   };
+  const { getRootProps: getRootProps1, getInputProps: getInputProps1 } =
+    useDropzone({
+      accept: { "image/*": [] },
+      maxFiles: 1,
+      onDrop: (files) => {
+        handleDrop(files, 1);
+      },
+    });
 
-  const { getRootProps, getInputProps } = useDropzone({
-    accept: { "image/*": [] },
-    maxFiles: 1,
-    onDrop: handleDrop,
-  });
-
+  const { getRootProps: getRootProps2, getInputProps: getInputProps2 } =
+    useDropzone({
+      accept: { "image/*": [] },
+      maxFiles: 1,
+      onDrop: (files) => handleDrop(files, 2),
+    });
   return (
     <div className="font-kanit mb-16">
-      {distanceFromGoal ? (
+      {true ? (
         <div>
           {showstatement ? (
             <div>
@@ -221,49 +288,85 @@ const ImageUploadPage = () => {
               </div>
               <form>
                 <div className="max-w-[600px] mx-auto px-[50px] mt-10">
-                  <h2 className="md:text-[1em] text-[0.8em]">อัพโหลดไฟล์</h2>
-                  {!filePreview ? (
-                    <div
-                      {...getRootProps()}
-                      style={{
-                        border: "2px dashed #959595",
-                        borderSpacing: "4px",
-                      }}
-                      className="mt-4 rounded-lg p-8"
+                  <div className="flex items-center justify-between">
+                    <h2 className="md:text-[1em] text-[0.8em]">
+                      รูปก่อนเริ่มทำงาน
+                    </h2>
+                    <svg
+                      onClick={() => setShowimg(!showimg)}
+                      className={`shrink-0 size-3.0 ${
+                        showimg ? "text-blue-500" : ""
+                      }`}
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      <Image
-                        src="/add.svg"
-                        width={200}
-                        quality={100}
-                        height={200}
-                        className="w-12 mx-auto h-12 sm:w-12 sm:h-12"
-                        alt="logo"
-                      />
-                      <h2 className="text-center font-[300] mt-4 text-[#4a4a4a] text-[0.85em] mx-[50px]">
-                        ภาพที่อัพโหลดต้องเป็นภาพที่มาจากอุปกรณ์ที่อัพโหลดเท่านั้น
-                      </h2>
+                      {showimg ? (
+                        <>
+                          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </>
+                      ) : (
+                        <>
+                          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                          <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                          <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                          <line x1="2" x2="22" y1="2" y2="22" />
+                        </>
+                      )}
+                    </svg>
+                  </div>
+                  {showimg && (
+                    <div>
+                      {!filePreview?.file1 ? (
+                        <div
+                          {...getRootProps1()}
+                          style={{
+                            border: "2px dashed #959595",
+                            borderSpacing: "4px",
+                          }}
+                          className="mt-4 rounded-lg p-8"
+                        >
+                          <Image
+                            src="/add.svg"
+                            width={200}
+                            quality={100}
+                            height={200}
+                            className="w-12 mx-auto h-12 sm:w-12 sm:h-12"
+                            alt="logo"
+                          />
+                          <h2 className="text-center font-[300] mt-4 text-[#4a4a4a] text-[0.85em] mx-[50px]">
+                            ภาพที่อัพโหลดต้องเป็นภาพที่มาจากอุปกรณ์ที่อัพโหลดเท่านั้น
+                          </h2>
 
-                      <div className="flex items-center mx-auto gap-x-2 justify-center mt-4">
-                        <Image
-                          src="/caution.svg"
-                          width={200}
-                          quality={100}
-                          height={200}
-                          className="w-4 h-4 sm:w-4 sm:h-4"
-                          alt="logo"
-                        />
-                        <p className="text-[0.7em] text-[#363636]">
-                          ขนาดของไฟล์จะต้องไม่เกิน 10 mb
-                        </p>
-                      </div>
-                      <input {...getInputProps()} />
-                    </div>
-                  ) : (
-                    <div className="mt-4">
-                      <img src={filePreview.preview} alt="preview" />
+                          <div className="flex items-center mx-auto gap-x-2 justify-center mt-4">
+                            <Image
+                              src="/caution.svg"
+                              width={200}
+                              quality={100}
+                              height={200}
+                              className="w-4 h-4 sm:w-4 sm:h-4"
+                              alt="logo"
+                            />
+                            <p className="text-[0.7em] text-[#363636]">
+                              ขนาดของไฟล์จะต้องไม่เกิน 10 mb
+                            </p>
+                          </div>
+                          <input {...getInputProps1()} />
+                        </div>
+                      ) : (
+                        <div className="mt-4">
+                          <img src={filePreview?.preview1} alt="preview" />
+                        </div>
+                      )}
                     </div>
                   )}
-                  {filePreview && (
+                  {filePreview?.file1 && (
                     <div className="mt-4 border-2 flex gap-x-2 items-center p-4 justify-between rounded-lg">
                       <div className="flex items-center gap-x-2">
                         <Image
@@ -274,10 +377,14 @@ const ImageUploadPage = () => {
                           className="w-4 h-4 sm:w-4 sm:h-4 invert-[0.2]"
                           alt="logo"
                         />
-                        <p>{filePreview?.file.name.length<17? filePreview?.file.name:filePreview?.file.name.substring(0,17)+"..."}</p>
+                        <p>
+                          {filePreview?.file1.name.length < 17
+                            ? filePreview?.file1.name
+                            : filePreview?.file1.name.substring(0, 17) + "..."}
+                        </p>
                       </div>
                       <Image
-                        onClick={handleDelete}
+                        onClick={() => handleDelete(1)}
                         src="/trash.svg"
                         width={200}
                         quality={100}
@@ -287,6 +394,117 @@ const ImageUploadPage = () => {
                       />
                     </div>
                   )}
+                  <div className="flex items-center mt-8 mb-4 justify-between">
+                    <h2 className="md:text-[1em] text-[0.8em]">
+                      รูปหลังทำงาน(ถ่ายห่างกันอย่างน้อย 10 นาที)
+                    </h2>
+                    <svg
+                      onClick={() => setShowimgAfter(!showimgAfter)}
+                      className={`shrink-0 size-3.0 ${
+                        showimgAfter ? "text-blue-500" : ""
+                      }`}
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      {showimgAfter ? (
+                        <>
+                          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </>
+                      ) : (
+                        <>
+                          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                          <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                          <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                          <line x1="2" x2="22" y1="2" y2="22" />
+                        </>
+                      )}
+                    </svg>
+                  </div>
+
+                  {showimgAfter && (
+                    <div>
+                      {!filePreview?.file2 ? (
+                        <div
+                          {...getRootProps2()}
+                          style={{
+                            border: "2px dashed #959595",
+                            borderSpacing: "4px",
+                          }}
+                          className="mt-4 rounded-lg p-8"
+                        >
+                          <Image
+                            src="/add.svg"
+                            width={200}
+                            quality={100}
+                            height={200}
+                            className="w-12 mx-auto h-12 sm:w-12 sm:h-12"
+                            alt="logo"
+                          />
+                          <h2 className="text-center font-[300] mt-4 text-[#4a4a4a] text-[0.85em] mx-[50px]">
+                            ภาพที่อัพโหลดต้องเป็นภาพที่มาจากอุปกรณ์ที่อัพโหลดเท่านั้น
+                          </h2>
+
+                          <div className="flex items-center mx-auto gap-x-2 justify-center mt-4">
+                            <Image
+                              src="/caution.svg"
+                              width={200}
+                              quality={100}
+                              height={200}
+                              className="w-4 h-4 sm:w-4 sm:h-4"
+                              alt="logo"
+                            />
+                            <p className="text-[0.7em] text-[#363636]">
+                              ขนาดของไฟล์จะต้องไม่เกิน 10 mb
+                            </p>
+                          </div>
+                          <input {...getInputProps2()} />
+                        </div>
+                      ) : (
+                        <div className="mt-4">
+                          <img
+                            src={filePreview?.preview2 || ""}
+                            alt="preview"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {filePreview?.preview2 && (
+                    <div className="mt-4 border-2 flex gap-x-2 items-center p-4 justify-between rounded-lg">
+                      <div className="flex items-center gap-x-2">
+                        <Image
+                          src="/fileimg.svg"
+                          width={200}
+                          quality={100}
+                          height={200}
+                          className="w-4 h-4 sm:w-4 sm:h-4 invert-[0.2]"
+                          alt="logo"
+                        />
+                        <p>
+                          {filePreview?.file2?.name.length ?? 0 < 17
+                            ? filePreview?.file2?.name
+                            : filePreview?.file2?.name.substring(0, 17) + "..."}
+                        </p>
+                      </div>
+                      <Image
+                        onClick={() => handleDelete(2)}
+                        src="/trash.svg"
+                        width={200}
+                        quality={100}
+                        height={200}
+                        className="w-4 h-4 sm:w-4 sm:h-4 invert-[0.2]"
+                        alt="logo"
+                      />
+                    </div>
+                  )}
+
                   <button
                     onClick={(e) => handleSubmit(e)}
                     type="submit"
@@ -311,7 +529,6 @@ const ImageUploadPage = () => {
           ) : (
             <div className="max-w-[600px] p-[30px] mx-auto">
               <Image
-                onClick={handleDelete}
                 src="/check.svg"
                 width={200}
                 quality={100}
@@ -451,8 +668,8 @@ const ImageUploadPage = () => {
             />
             <p className="mt-4">
               1.สำหรับ Ios เปิดเว็บไซต์ใน browser chorm <br></br>{" "}
-              หากยังไม่ได้ให้เข้าไปที่การตั้งค่า จากนั้นไปที่ chorm{" "}
-              <br/>เข้าไปที่ location ตามรูปภาพ
+              หากยังไม่ได้ให้เข้าไปที่การตั้งค่า จากนั้นไปที่ chorm <br />
+              เข้าไปที่ location ตามรูปภาพ
             </p>
           </div>
           <div className="text-center mt-[100px] text-[0.8em]">
@@ -464,9 +681,7 @@ const ImageUploadPage = () => {
               className="mt-16 mx-auto w-[300px] "
               alt="logo"
             />
-            <p className="mt-4">
-             2.เปลี่ยนเป็นขณะใช้งานเว็บไซต์
-            </p>
+            <p className="mt-4">2.เปลี่ยนเป็นขณะใช้งานเว็บไซต์</p>
           </div>
         </div>
       )}
