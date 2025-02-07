@@ -50,14 +50,8 @@ function History() {
         </div>
         <div className="flex text-[12px] hover:text-[#4A4A4A] items-center transition-all duration-[500ms] gap-x-[25px]">
           <ul className="sm:block hidden">รายละเอียด</ul>
-          <ul className="sm:block hidden">วิธีการใช้งาน</ul>
+          <ul className="">วิธีการใช้งาน</ul>
           <ul>ติดต่อ</ul>
-          <ul
-            style={{ backgroundColor: color.color1 }}
-            className=" text-white rounded-[25px] py-[10px] px-6"
-          >
-            <Link href={"/submit"}>เช็คชื่อ</Link>
-          </ul>
         </div>
       </nav>
       <section className="flex mt-8  justify-between gap-x-10 mx-[25px] sm:mx-[70px]">
@@ -208,10 +202,46 @@ function History() {
           </p>
         </div>
       </section>
-      <section className="mt-10 bg-[#F7F8FB] pt-12 px-[25px] md:px-[70px]">
+      <section className="mt-10 bg-[#F7F8FB] pt-6 px-[25px] md:px-[70px]">
         {" "}
+        <div className="flex items-center mb-6">
+          <div className="w-full items-center flex gap-x-4 justify-end">
+            <div
+              style={{ backgroundColor: color.color1 }}
+              className="flex items-center gap-x-2 text-white rounded-[15px]  w-fit text-nowrap text-center text-[12px] py-[10px] px-8"
+            >
+              {" "}
+              <Image
+                className="w-4 h-4"
+                title="check"
+                src="/checktree.svg"
+                height={100}
+                width={100}
+                alt="refesh"
+              ></Image>
+              <Link href={"/submit"}>เช็คชื่อ</Link>
+            </div>
+            <div className="relative">
+              <Image
+                className="w-4 h-4 absolute left-2 top-[10px]"
+                title="search"
+                src="/seacrh.svg"
+                height={100}
+                width={100}
+                alt="refesh"
+              ></Image>
+              <input
+                className="py-2 pl-8 pr-2 border-2 text-[12px] focus:outline-none rounded-lg font-[300]"
+                placeholder="ค้นหาวันที่ เช่น 22/03/68"
+                type="text"
+                name=""
+                id=""
+              />
+            </div>
+          </div>
+        </div>
         <div className="bg-white min-h-[300px] rounded-t-[35px] px-12 py-8">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-x-10 justify-between">
             <div>
               <h2>ประวัติการรดน้ำต้นไม้</h2>
               <p className="text-[#4a4a4a] font-[300] text-[0.8em]">
@@ -219,13 +249,15 @@ function History() {
                 ที่เกี่ยวข้องทั้งหมดได้ที่นี่
               </p>
             </div>
-            <Image
-              title="report"
-              src="/report.svg"
-              height={38}
-              width={38}
-              alt="refesh"
-            ></Image>
+            <div className="flex gap-x-2 items-center">
+              <Image
+                title="report"
+                src="/report.svg"
+                height={38}
+                width={38}
+                alt="refesh"
+              ></Image>
+            </div>
           </div>
           <div className="w-full mt-6 ">
             <table className="w-full">
