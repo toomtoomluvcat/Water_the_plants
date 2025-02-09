@@ -7,6 +7,7 @@ import Link from "next/link";
 import { parse } from "exifr";
 import { DateTime } from "luxon";
 import { v4 as uuid } from "uuid";
+import { Clipboard, ClipboardCheck } from "lucide-react";
 
 interface FilePreview {}
 
@@ -45,15 +46,17 @@ const ImageUploadPage = () => {
   const [location, setLocation] = useState<any>();
   const [user, setUser] = useState<{
     name: string;
-    fileName: string | undefined;
+    fileNameAfter: string | undefined;
+    fileNameBefore: string | undefined;
     id: string;
     datePhotoBefore: string | undefined;
     timePhotoBefore: string | undefined;
     datePhotoAfter: string | undefined;
     timePhotoAfter: string | undefined;
     dateSubmit: string;
-    timeSubmit: String;
+    timeSubmit: string;
   }>();
+  const [isCopy,setisCopy] =useState<boolean>(false);
 
   function toRadians(degrees: number) {
     return (degrees * Math.PI) / 180;
@@ -105,7 +108,17 @@ const ImageUploadPage = () => {
       }
     );
   };
-
+  const handleCopy = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(user?.id ?? "");
+      setisCopy(true);
+      setTimeout(() => {
+        setisCopy(false)
+      }, 6000);
+    } catch {
+      alert("คัดลอดไม่สำเร็จ");
+    }
+  };
   // useEffect(() => {
   //   requestLocation();
   // }, []);
@@ -124,11 +137,11 @@ const ImageUploadPage = () => {
     e: React.FormEvent<HTMLButtonElement>
   ): Promise<void> => {
     e.preventDefault();
-    if (!filePreview?.file1 && !filePreview?.file2) {
+    if (!filePreview?.file1 || !filePreview?.file2) {
       setError("Please provide information");
       return;
     }
-    if (!exifDateTime?.date1 && exifDateTime?.date2) {
+    if (!exifDateTime?.date1 || !exifDateTime?.date2) {
       setError("อุปกรณ์และแหล่งที่มารูปภาพไม่ตรงกัน");
       return;
     }
@@ -141,12 +154,13 @@ const ImageUploadPage = () => {
     console.log("โหล" + exifDateTime?.date1);
     const data = {
       name: "สมชาย มั่นหมาย",
-      fileName: filePreview?.file1?.name,
+      fileNameAfter: filePreview?.file2?.name,
+      fileNameBefore: filePreview?.file1?.name,
       id: id,
-      datePhotoAfter: exifDateTime?.date1,
-      timePhotoAfter: exifDateTime?.time1,
-      datePhotoBefore: exifDateTime?.date2,
-      timePhotoBefore: exifDateTime?.time2,
+      datePhotoAfter: exifDateTime?.date2 ?? "",
+      timePhotoAfter: exifDateTime?.time2 ?? "",
+      datePhotoBefore: exifDateTime?.date1 ?? "",
+      timePhotoBefore: exifDateTime?.time1 ?? "",
       dateSubmit: buddhistEraDate,
       timeSubmit: timeSubmit,
     };
@@ -508,9 +522,13 @@ const ImageUploadPage = () => {
                   <button
                     onClick={(e) => handleSubmit(e)}
                     type="submit"
-                    disabled={filePreview ? false : true}
+                    disabled={!filePreview?.file1 || !filePreview?.file2}
                     style={{
-                      backgroundColor: filePreview ? "black" : "#858585",
+                      backgroundColor: !(
+                        !filePreview?.file1 || !filePreview?.file2
+                      )
+                        ? "black"
+                        : "#858585",
                     }}
                     className="py-4 px-6 text-white rounded-lg mt-4 w-full"
                   >
@@ -546,9 +564,20 @@ const ImageUploadPage = () => {
               <div className=" p-6 mt-10 rounded-lg flex flex-col gap-y-[15px] border-2">
                 <div className="flex justify-between font-[300]">
                   <h2 className="text-[1em]  text-[#a4a4a4]">Id</h2>
-                  <h2 className="text-[1em] text-center  grow max-w-[150px]">
-                    {user?.id.substring(0, 8)} ...
-                  </h2>
+                  <div className="flex grow max-w-[120px] items-center gap-x-2">
+                    <h2 className="text-[1em] text-center  ">
+                      {isCopy? "คัดลอกแล้ว" : `${user?.id.substring(0, 8)} ...`}
+                    </h2>
+                    <Image
+                    onClick={()=>handleCopy()}
+                      src={`/coppy${isCopy? "1":""}.svg`}
+                      width={100}
+                      quality={100}
+                      height={100}
+                      className="w-4"
+                      alt="logo"
+                    />
+                  </div>
                 </div>{" "}
                 <div className="flex justify-between font-[300]">
                   <h2 className="text-[1em] text-[#a4a4a4]">ผู้ส่ง</h2>
